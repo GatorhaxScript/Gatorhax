@@ -1,3 +1,8 @@
-test
-test123
-test000
+{
+  "GATOR-ARENA-001": {
+    "expires": 1767225600
+  },
+  "GATOR-ARENA-TRIAL": {
+    "expires": 1735689600
+  }
+}
