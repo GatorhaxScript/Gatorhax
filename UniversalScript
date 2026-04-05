@@ -38,7 +38,6 @@ main.Active = true
 main.Draggable = true
 main.BorderSizePixel = 0
 Instance.new("UICorner", main).CornerRadius = UDim.new(0,18)
-
 Instance.new("UIStroke", main).Color = Color3.fromRGB(0,255,170)
 
 -- TITLE
@@ -57,7 +56,7 @@ content.Size = UDim2.new(0.75,0,1,-65)
 content.BackgroundTransparency = 1
 content.ClipsDescendants = true
 
--- TABS (LEFT)
+-- TABS
 local tabs = Instance.new("Frame", main)
 tabs.Position = UDim2.new(0.02,0,0.12,0)
 tabs.Size = UDim2.new(0.18,0,0.75,0)
@@ -97,7 +96,7 @@ local function box(parent,placeholder)
 	return t
 end
 
--- PAGES (SAFE SYSTEM)
+-- PAGES
 local pages = {}
 local function newPage(name)
 	local f = Instance.new("Frame", content)
@@ -105,10 +104,8 @@ local function newPage(name)
 	f.BackgroundTransparency = 1
 	f.Visible = false
 	pages[name] = f
-
 	local layout = Instance.new("UIListLayout", f)
 	layout.Padding = UDim.new(0,12)
-
 	return f
 end
 
@@ -117,7 +114,6 @@ local pageFeatures = newPage("Features")
 local pageServer = newPage("Server")
 local pageInfo = newPage("Info")
 
--- TAB BUTTON
 local function tabButton(text)
 	local b = Instance.new("TextButton", tabs)
 	b.Size = UDim2.new(1,0,0,42)
@@ -136,7 +132,6 @@ local tFeatures = tabButton("Features")
 local tServer = tabButton("Server")
 local tInfo = tabButton("Info")
 
--- SHOW PAGE (STABLE)
 local function showPage(name, btn)
 	for _,p in pairs(pages) do p.Visible = false end
 	for _,b in pairs(tabs:GetChildren()) do
@@ -159,38 +154,24 @@ showPage("Main", tMain)
 
 -- ================= MAIN =================
 
--- FPS MONITOR (FINAL)
+-- FPS
 local fpsCard = card(pageMain, 45)
-
 local fpsLabel = Instance.new("TextLabel", fpsCard)
 fpsLabel.Size = UDim2.new(1,0,1,0)
 fpsLabel.BackgroundTransparency = 1
 fpsLabel.Font = Enum.Font.GothamBold
 fpsLabel.TextSize = 15
 fpsLabel.TextColor3 = Color3.fromRGB(0,255,170)
-fpsLabel.Text = "FPS : ..."
 
 local frames = 0
 local lastTime = os.clock()
-
 RunService.RenderStepped:Connect(function()
 	frames += 1
-	local now = os.clock()
-	if now - lastTime >= 1 then
+	if os.clock() - lastTime >= 1 then
 		fpsLabel.Text = "FPS : "..frames
 		frames = 0
-		lastTime = now
+		lastTime = os.clock()
 	end
-end)
-
-
--- ANTI FPS
-local antiFPS = false
-local fpsBtn = btn(card(pageMain,45),"Anti FPS Drop : OFF")
-fpsBtn.MouseButton1Click:Connect(function()
-	antiFPS = not antiFPS
-	Lighting.GlobalShadows = not antiFPS
-	fpsBtn.Text = "Anti FPS Drop : "..(antiFPS and "ON" or "OFF")
 end)
 
 -- ANTI AFK
@@ -201,7 +182,6 @@ afkBtn.MouseButton1Click:Connect(function()
 	antiAFK = not antiAFK
 	if antiAFK then
 		afkConn = player.Idled:Connect(function()
-			VirtualUser:CaptureController()
 			VirtualUser:ClickButton2(Vector2.new())
 		end)
 	else
@@ -210,112 +190,35 @@ afkBtn.MouseButton1Click:Connect(function()
 	afkBtn.Text = "Anti AFK : "..(antiAFK and "ON" or "OFF")
 end)
 
--- ================= FEATURES =================
+-- ================= AUTO CLICKER (ADDED) =================
+getgenv().AutoClicker = false
+local clicking = false
 
-local walkSpeed = 16
-local jumpPower = 50
-local flySpeed = 80
-local flyEnabled = false
-local flyBV, flyBG
+local function StartAutoClicker()
+	if clicking then return end
+	clicking = true
 
-box(card(pageFeatures,45),"WalkSpeed (ENTER)").FocusLost:Connect(function(e)
-	if e then
-		local v = tonumber(script.Parent.Text)
+	task.spawn(function()
+		while getgenv().AutoClicker do
+			task.wait(0.05)
+			mouse1click()
+		end
+		clicking = false
+	end)
+end
+
+local autoClickBtn = btn(card(pageMain,45),"Auto Clicker : OFF")
+autoClickBtn.MouseButton1Click:Connect(function()
+	getgenv().AutoClicker = not getgenv().AutoClicker
+	
+	if getgenv().AutoClicker then
+		StartAutoClicker()
 	end
+	
+	autoClickBtn.Text = "Auto Clicker : "..(getgenv().AutoClicker and "ON" or "OFF")
 end)
 
-local wsBox = box(card(pageFeatures,45),"WalkSpeed (ENTER)")
-wsBox.FocusLost:Connect(function(e)
-	if e then
-		local v = tonumber(wsBox.Text)
-		if v then walkSpeed = math.clamp(v,0,500) end
-	end
-end)
-
-local jpBox = box(card(pageFeatures,45),"JumpPower (ENTER)")
-jpBox.FocusLost:Connect(function(e)
-	if e then
-		local v = tonumber(jpBox.Text)
-		if v then jumpPower = math.clamp(v,0,500) end
-	end
-end)
-
-local fsBox = box(card(pageFeatures,45),"FlySpeed (ENTER)")
-fsBox.FocusLost:Connect(function(e)
-	if e then
-		local v = tonumber(fsBox.Text)
-		if v then flySpeed = math.clamp(v,10,300) end
-	end
-end)
-
-local flyBtn = btn(card(pageFeatures,45),"Fly : OFF")
-flyBtn.MouseButton1Click:Connect(function()
-	flyEnabled = not flyEnabled
-	flyBtn.Text = "Fly : "..(flyEnabled and "ON" or "OFF")
-
-	local char = player.Character
-	local hrp = char and char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	if flyEnabled then
-		flyBV = Instance.new("BodyVelocity", hrp)
-		flyBV.MaxForce = Vector3.new(1e5,1e5,1e5)
-
-		flyBG = Instance.new("BodyGyro", hrp)
-		flyBG.MaxTorque = Vector3.new(1e5,1e5,1e5)
-	else
-		if flyBV then flyBV:Destroy() end
-		if flyBG then flyBG:Destroy() end
-	end
-end)
-
--- APPLY
-RunService.Heartbeat:Connect(function()
-	local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.WalkSpeed = walkSpeed
-		hum.JumpPower = jumpPower
-	end
-
-	if flyEnabled and flyBV and flyBG then
-		local dir = Vector3.zero
-		if UIS:IsKeyDown(Enum.KeyCode.W) then dir += camera.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= camera.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= camera.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.D) then dir += camera.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.Space) then dir += camera.CFrame.UpVector end
-		if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= camera.CFrame.UpVector end
-
-		flyBV.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
-		flyBG.CFrame = camera.CFrame
-	end
-end)
-
-player.CharacterAdded:Connect(function()
-	flyEnabled = false
-	if flyBV then flyBV:Destroy() end
-	if flyBG then flyBG:Destroy() end
-end)
-
--- ================= SERVER =================
-local s = Instance.new("TextLabel", pageServer)
-s.Size = UDim2.new(1,0,1,0)
-s.BackgroundTransparency = 1
-s.Text = "Server features soon..."
-s.Font = Enum.Font.Gotham
-s.TextSize = 16
-s.TextColor3 = Color3.fromRGB(150,150,150)
-
--- ================= INFO =================
-local i = Instance.new("TextLabel", pageInfo)
-i.Size = UDim2.new(1,0,1,0)
-i.BackgroundTransparency = 1
-i.Text = "GATORHAX \n\n Universal Script \n\n PC ONLY"
-i.Font = Enum.Font.GothamBold
-i.TextSize = 18
-i.TextColor3 = Color3.fromRGB(0,255,170)
-
--- INSERT TOGGLE
+-- TOGGLE GUI
 UIS.InputBegan:Connect(function(input,gp)
 	if not gp and input.KeyCode == Enum.KeyCode.Insert then
 		main.Visible = not main.Visible
