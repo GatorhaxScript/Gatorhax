@@ -1,1 +1,1 @@
-DoomAntiAfk
+DoomAntiAfk: caa50b6790f47bd880a12e088f19747b31b60725ad5158e4ccbf57b3e49863cd
